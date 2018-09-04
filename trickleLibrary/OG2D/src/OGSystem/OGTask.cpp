@@ -1,41 +1,78 @@
-#include "OGSystem\OGTask.h"
+ï»¿#include "OGSystem\OGTask.h"
 #include "Task\Task_Title.h"
 #include "Task\Task_Game.h"
 #include "Task\Task_TitleMovement.h"
 #include "Task\StageSelect.h"
 #include "Task\Task_Result.h"
+#include "Task\Task_Demo.h"
+#include "Task\Task_Credit.h"
 #include "GameProcessManagement\GameProcessManagement.h"
+#include "Task\JecLogo.h"
 
 void OGTK::_myGameInitialize()
 {
-	//¶¬‚·‚éWindowî•ñ
+	//ç”Ÿæˆã™ã‚‹Windowæƒ…å ±
 	//OGge->SetWindow(960, 540, "WindowName", false);	
 	OGge->SetWindow(1920, 1080, "Trickel", true);
 	OGge->SetWindowPos(Vec2(0, 0));
-	//ƒ}ƒEƒXƒJ[ƒ\ƒ‹•s‰ÂŽ‹
+	//ãƒžã‚¦ã‚¹ã‚«ãƒ¼ã‚½ãƒ«ä¸å¯è¦–
 	OGge->SetCursorOn(false);
 }
 
 void OGTK::StartTaskObject()
 {
-	//Žg—pƒtƒHƒ“ƒg‚Ì“Ç‚Ýž‚Ý
+	//ä½¿ç”¨ãƒ•ã‚©ãƒ³ãƒˆã®èª­ã¿è¾¼ã¿
 	Texture* fontTex;
 	fontTex = new Texture();
 	fontTex->Create("fontui.png");
-	rm->SetTextureData((std::string)"fontui", fontTex);
-
-	//ƒ^ƒXƒN‚Ì‰Šú‰»
-	auto TopTask = Title::Create();
-	//*MapNum = 6;
+	rm->SetTextureData("fontui", fontTex);
+	Texture* frameTex = new Texture();
+	frameTex->Create("frame.png");
+	rm->SetTextureData("frame.png", frameTex);
+	Texture* numberTex = new Texture();
+	numberTex->Create("number.png");
+	rm->SetTextureData("number.png", numberTex);
+	Texture* BackBrack = new Texture("TransparentBackTitle.png");
+	rm->SetTextureData("BrackBackGround", BackBrack);
+	Texture* LoadLogo = new Texture("LoadTest.png");
+	rm->SetTextureData("LoadLogo", LoadLogo);
+	//ã‚¿ã‚¹ã‚¯ã®åˆæœŸåŒ–
+	auto TopTask = LogoTask::Create();
+	//*MapNum = 15;
 	//Game::Create();
 	//GameManager::ResetData();
 }
 
 OGTK::~OGTK()
 {
-	if (rm->GetTextureData((std::string)"fontui"))
+	if (rm->GetTextureData("fontui"))
 	{
-		delete rm->GetTextureData((std::string)"fontui");
-		rm->DeleteTexture((std::string)"fontui");
+		rm->GetTextureData("fontui")->Finalize();
+		delete rm->GetTextureData("fontui");
+		rm->DeleteTexture("fontui");
+	}
+	if (rm->GetTextureData("frame.png"))
+	{
+		rm->GetTextureData("frame.png")->Finalize();
+		delete rm->GetTextureData("frame.png");
+		rm->DeleteTexture("frame.png");
+	}
+	if (rm->GetTextureData("number.png"))
+	{
+		rm->GetTextureData("number.png")->Finalize();
+		delete rm->GetTextureData("number.png");
+		rm->DeleteTexture("number.png");
+	}
+	if (rm->GetTextureData("BrackBackGround"))
+	{
+		rm->GetTextureData("BrackBackGround")->Finalize();
+		delete rm->GetTextureData("BrackBackGround");
+		rm->DeleteTexture("BrackBackGround");
+	}
+	if (rm->GetTextureData("LoadLogo"))
+	{
+		rm->GetTextureData("LoadLogo")->Finalize();
+		delete rm->GetTextureData("LoadLogo");
+		rm->DeleteTexture("LoadLogo");
 	}
 }

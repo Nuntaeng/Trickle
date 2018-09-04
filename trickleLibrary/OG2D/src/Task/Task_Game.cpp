@@ -21,6 +21,10 @@
 #include "Effect\Effect.h"
 #include "Map\Ornament.h"
 #include "Load\LoadLogo.h"
+#include "Gimmick\NO_MOVE\Door.h"
+#include "UI/GoalDirectionUI.h"
+#include "VolumeControl/volumeControl.h"
+#include "Gimmick/NO_MOVE/WeightSwitch.h"
 
 #define ADD_FUNCTION(a) \
 	[](std::vector<GameObject*>* objs_) { a(objs_); }
@@ -29,6 +33,8 @@ Game::Game()
 {
 	gamesoundname = "game.wav";
 	tutorialsoundname = "tutorial.wav";
+
+	this->canvolControl = true;
 	//this->ResetKillCount();
 	OGge->camera->SetSize(Vec2(1920, 1080));
 }
@@ -37,25 +43,24 @@ Game::~Game()
 {
 	if (this->GetNextTask() && !OGge->GetDeleteEngine())
 	{
-		auto load = Load::Create();
-		load->Draw();
+		OGge->ChengeTask();
 	}
 	//解放処理と次のsceneの生成
 	this->Finalize();
 	//OGge->DeleteTasks();
-	OGge->ChengeTask();
-	
+
+
 }
 
 //-------------------------------------------------------------------------------------------------
 bool Game::Initialize()
 {
+	OGge->camera->SetSize(Vec2(1280, 720));
 	auto backImage = Back::Create(std::string("back.png"), 1920, 1080);
+
 	//Pauseタスクの生成
 	auto pause = Pause::Create();
 
-
-	_waterpos = { 200 - 25,100 };
 	Vec2 fanpos[2] = { Vec2(64 * 12,64 * 7), Vec2(64 * 20,64 * 10) };
 	float fanrange[2] = { 16,7 };
 	//扇風機画像読み込み
@@ -74,6 +79,14 @@ bool Game::Initialize()
 	rm->SetTextureData(std::string("steam"), &this->texSteam);
 	this->goalTex.Create("goal.png");
 	rm->SetTextureData((std::string)"goalTex", &this->goalTex);
+	this->goalDirectionTex.Create((std::string)"goalarrow.png");
+	rm->SetTextureData((std::string)"goalDirectionTex", &this->goalDirectionTex);
+	this->arrowflower.Create((std::string)"arrowflower.png");
+	rm->SetTextureData((std::string)"arrowflowerTex", &this->arrowflower);
+	this->doorTex.Create("door.png");
+	rm->SetTextureData((std::string)"WswitchTex", &this->WswitchTex);
+	this->WswitchTex.Create("Collision.png");
+	this->pipeTex.Create("pipe.png");
 	//ui生成
 	UImng_.reset(new UImanager());
 	UImng_->Initialize(*MapNum);
@@ -84,90 +97,252 @@ bool Game::Initialize()
 		//txt読み込み消したので削除しています。
 		this->Kill();
 		break;
-	case 1:		//チュートリアル１
+	case 1:		//水１
 	{
 		//map生成
-		auto mapload = Map::Create((std::string)"tutorial1.csv");
+		auto mapload = Map::Create((std::string)"water1.csv");
 		//水の位置
-		_waterpos.x = 64 * 7 - 25;
-		_waterpos.y = 64 * 15;
+		_waterpos = mapload->getWaterPos();
 		//チュートリアルのサウンドに使用
 		sound.create(tutorialsoundname, true);
-		sound.volume(1.0f);
+		sound.volume(0.0f);
 		OGge->soundManager->SetSound(&sound);
 		sound.play();
-	}
-	break;
-	case 2:		//チュートリアル２
-	{
-		//map生成
-		auto mapload = Map::Create((std::string)"tutorial2.csv");
-		//水の位置
-		_waterpos.x = 64 * 8 - 25;
-		_waterpos.y = 64 * 10;
-		//チュートリアルのサウンドに使用
-		sound.create(tutorialsoundname, true);
-		sound.volume(1.0f);
-		OGge->soundManager->SetSound(&sound);
-		sound.play();
-
-	}
-	break;
-	case 3:		//チュートリアル３
-		//位置変更
-		_waterpos.x = 6 * 64 - 25;
-		_waterpos.y = 64 * 12;
-		{
-			//map生成
-			auto mapload = Map::Create((std::string)"tutorial3.csv");
-			//チュートリアルのサウンドに使用
-			sound.create(tutorialsoundname, true);
-			sound.volume(1.0f);
-			OGge->soundManager->SetSound(&sound);
-			sound.play();
-
-			//加熱器生成
-			auto kanetuki1 = Kanetuki::Create(Vec2(64 * 21, 64 * 17), Vec2(64 * 2, 64), Kanetuki::Angle::UP, false);
-			//auto kanetuki2 = Kanetuki::Create(Vec2(64 * 22, 64 * 17), false);
-			//扇風機生成
-			auto fan = Fan::Create(Vec2(64 * 14, 64 * 7), 13, Fan::Dir::RIGHT, 64 * 5, true);
-			//加熱器用スイッチ生成
-			auto swich = Switch::Create(Vec2(64 * 18, 64 * 16), std::vector<std::shared_ptr<GameObject>>{kanetuki1/*, kanetuki2*/}, Switch::TargetType::Heater);
-		}
 		break;
-	case 4:		//チュートリアル４
+	}
+	case 2:		//水２
 	{
 		//map生成
-		auto mapload = Map::Create((std::string)"tutorial4.csv");
+		auto mapload = Map::Create((std::string)"water2.csv");
 		//水の位置
-		_waterpos.x = 64 * 5 - 25;
-		_waterpos.y = 64 * 4;
+		_waterpos = mapload->getWaterPos();
 		//チュートリアルのサウンドに使用
 		sound.create(tutorialsoundname, true);
-		sound.volume(1.0f);
+		sound.volume(0.0f);
 		OGge->soundManager->SetSound(&sound);
 		sound.play();
+		break;
+	}
+	case 3:		//水３
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"water3.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		break;
+	}
+	case 4:		//水4
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"water4.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		break;
+	}
+	case 5:		//氷1
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"ice1.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
 		//加熱器生成
 		auto kanetuki = Kanetuki::Create(Vec2(17 * 64, 18 * 64), Vec2(64, 64), Kanetuki::Angle::RIGHT, false);
 		//製氷機生成
-		auto seihyouki = Seihyouki::Create(Vec2(4 * 64, 10 * 64), Vec2(64 * 2, 64), Seihyouki::Angle::LEFT);
+		auto seihyouki = Seihyouki::Create(Vec2(4 * 64, 10 * 64), Vec2(64 * 2, 64), Seihyouki::Angle::LEFT, false);
 		//製氷機用スイッチ生成
 		auto iceSwitch = Switch::Create(Vec2(64 * 7, 64 * 8), std::vector<std::shared_ptr<GameObject>>{seihyouki}, Switch::TargetType::IceMachine);
 		//加熱器用スイッチ生成
 		auto heaterSwitch = Switch::Create(Vec2(64 * 14, 64 * 15), std::vector<std::shared_ptr<GameObject>>{kanetuki}, Switch::TargetType::Heater);
+		break;
 	}
-	break;
-	case 5:		//ステージ１
+	case 6:		//氷2
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"ice2.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器
+		Kanetuki::Create(Vec2(64 * 21, 64 * 8), Vec2(64 * 2, 64), Kanetuki::Angle::LEFT, true);
+		//製氷機
+		auto seihyouki = Seihyouki::Create(Vec2(64 * 3, 64 * 6), Vec2(64 * 2, 64), Seihyouki::Angle::RIGHT, false);
+		//製氷機スイッチ
+		Switch::Create(Vec2(64 * 13, 64 * 4), std::vector<std::shared_ptr<GameObject>>{seihyouki}, Switch::TargetType::IceMachine);
+
+		break;
+	}
+	case 7:		//氷3
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"ice3.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器
+		Kanetuki::Create(Vec2(64 * 9, 64 * 6), Vec2(64 * 5, 64 * 2), Kanetuki::Angle::BOTTOM, true);
+		Kanetuki::Create(Vec2(64 * 23, 64 * 7), Vec2(64 * 3, 64 * 2), Kanetuki::Angle::BOTTOM, true);
+		//製氷機
+		auto seihyouki = Seihyouki::Create(Vec2(64 * 4, 64 * 4), Vec2(64 * 2.5f, 64.f), Seihyouki::Angle::RIGHT, false);
+		//製氷機スイッチ
+		Switch::Create(Vec2(64 * 3, 64 * 8), std::vector<std::shared_ptr<GameObject>>{seihyouki}, Switch::TargetType::IceMachine);
+
+		break;
+	}
+	case 8:		//氷4
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"ice4.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器
+		//Kanetuki::Create(Vec2(64 * 17, 64 * 5), Vec2(64, 64 * 2), Kanetuki::Angle::BOTTOM, true);
+		//製氷機
+		auto seihyouki = Seihyouki::Create(Vec2(64 * 6, 64 * 5), Vec2(64 * 2.5f, 64.f), Seihyouki::Angle::RIGHT, false);
+		//製氷機スイッチ
+		Switch::Create(Vec2(64 * 5, 64 * 9), std::vector<std::shared_ptr<GameObject>>{seihyouki}, Switch::TargetType::IceMachine);
+		//重さドア
+		auto door = Door::Create(Vec2(64 * 13, 64 * 6), Vec2(32, 64 * 2), false, Door::Direction::HEIGHT);
+		door->SetTexture(&doorTex);
+		//重さスイッチ
+		auto ws = WeightSwitch::Create(Vec2(64 * 2 + 32, 64 * 9 + 34), Vec2(64 * 2, 30), 1, std::vector<std::shared_ptr<GameObject>>{door});
+		ws->SetTexture(&WswitchTex);
+		break;
+	}
+	case 9:		//蒸気1
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"steam1.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器生成
+		auto kanetuki1 = Kanetuki::Create(Vec2(64 * 15, 64 * 10 - 32), Vec2(64 * 2, 64+32), Kanetuki::Angle::UP, false);
+		//扇風機生成
+		auto fan = Fan::Create(Vec2(64 * 11, 64 * 2), 10, Fan::Dir::RIGHT, 64 * 5, true);
+		//加熱器用スイッチ生成
+		auto swich = Switch::Create(Vec2(64 * 13, 64 * 9), std::vector<std::shared_ptr<GameObject>>{kanetuki1/*, kanetuki2*/}, Switch::TargetType::Heater);
+		break;
+	}
+	case 10:	//蒸気2
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"steam2.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器生成
+		Kanetuki::Create(Vec2(64 * 9, 64 * 19 - 32), Vec2(64 * 3, 64 + 32), Kanetuki::Angle::UP, true);
+		//扇風機
+		auto fan1 = Fan::Create(Vec2(64 * 8, 64 * 15), 8, Fan::Dir::RIGHT, 64, true);
+		auto fan2 = Fan::Create(Vec2(64 * 17, 64 * 11), 9, Fan::Dir::LEFT, 64*9, false);
+		auto fan3 = Fan::Create(Vec2(64 * 8, 64 * 5), 9, Fan::Dir::RIGHT, 64, false);
+		auto fan4 = Fan::Create(Vec2(64 * 17, 64), 13, Fan::Dir::LEFT, 64*13, true);
+		//扇風機スイッチ
+		Switch::Create(Vec2(64 * 12, 64 * 12), std::vector<std::shared_ptr<GameObject>>{fan1, fan2}, Switch::TargetType::Fan);
+		Switch::Create(Vec2(64 * 13, 64 * 6), std::vector<std::shared_ptr<GameObject>>{fan3, fan4}, Switch::TargetType::Fan);
+
+		break;
+	}
+	case 11:	//蒸気3
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"steam3.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器
+		Kanetuki::Create(Vec2(64 * 10, 64 * 10 - 32), Vec2(64 * 3, 64 + 32), Kanetuki::Angle::UP, true);
+		//製氷機
+		auto seihyouki = Seihyouki::Create(Vec2(64 * 2, 64 * 7), Vec2(64 * 1.5f, 64.f), Seihyouki::Angle::RIGHT, false);
+		//扇風機
+		Fan::Create(Vec2(64 * 5, 64 * 2), 8.5f, Fan::Dir::RIGHT, 64, true);
+		//製氷機スイッチ
+		Switch::Create(Vec2(64 * 4, 64 * 9), std::vector<std::shared_ptr<GameObject>>{seihyouki}, Switch::TargetType::IceMachine);
+
+		break;
+	}
+	case 12:	//蒸気4
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"steam4.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+		//チュートリアルのサウンドに使用
+		sound.create(tutorialsoundname, true);
+		sound.volume(0.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//加熱器
+		Kanetuki::Create(Vec2(64 * 12, 64 * 15 - 20), Vec2(64 * 3, 64 + 20), Kanetuki::Angle::UP, true);
+		//扇風機
+		Fan::Create(Vec2(64 * 11, 64 * 2), 8, Fan::Dir::RIGHT, 64, true);
+
+		break;
+	}
+	case 13:		//ステージ１
 	{
 		//map生成
 		auto mapload = Map::Create((std::string)"stage1.csv");
 		//水の位置
-		_waterpos.x = 64 * 4 - 25;
-		_waterpos.y = 64 * 2;
+		_waterpos = mapload->getWaterPos();
+
+		//テスト追加重さで反応するswitchのscale.yは30規定でお願いします
+		//auto wswitch = WeightSwitch::Create(Vec2(400, 920), Vec2(200, 30), 1.0f);
+		//wswitch->SetTexture(&WswitchTex);
 
 		//ゲームのサウンドに使用
 		sound.create(gamesoundname, true);
-		sound.volume(1.0f);
+		sound.volume(0.0f);
 		OGge->soundManager->SetSound(&sound);
 		sound.play();
 
@@ -177,7 +352,7 @@ bool Game::Initialize()
 		//加熱器生成
 		auto kanetuki1 = Kanetuki::Create(Vec2(64 * 19, 64 * 15 - 32), Vec2(64 * 2, 84), Kanetuki::Angle::UP, false);
 		//製氷機生成
-		auto seihyouki1 = Seihyouki::Create(Vec2(64 * 6, 64 * 7), Vec2(64 * 2, 64), Seihyouki::Angle::RIGHT);
+		auto seihyouki1 = Seihyouki::Create(Vec2(64 * 6, 64 * 7), Vec2(64 * 2, 64), Seihyouki::Angle::RIGHT, false);
 
 		//スイッチの生成
 		//扇風機用
@@ -192,19 +367,50 @@ bool Game::Initialize()
 		{
 			auto block = Block::Create(Vec2(1536, 70));
 		}
+		break;
 	}
-	break;
-	case 6:
+	case 14:	//ステージ2
 	{
 		//map生成
 		auto mapload = Map::Create((std::string)"stage2.csv");
 		//水の位置
-		_waterpos.x = 64 * 9 + 32;
-		_waterpos.y = 64 * 3;
-
+		_waterpos = mapload->getWaterPos();
 		//ゲームのサウンドに使用
 		sound.create(gamesoundname, true);
 		sound.volume(1.0f);
+		OGge->soundManager->SetSound(&sound);
+		sound.play();
+
+		//扇風機
+		Fan::Create(Vec2(64 * 16, 64 * 4), 6, Fan::Dir::RIGHT, 7, true);
+		//加熱器
+		Kanetuki::Create(Vec2(64 * 16, 64 * 12 + 32), Vec2(64 * 3, 64 + 32), Kanetuki::Angle::UP, true);
+		//製氷機
+		auto seihyouki = Seihyouki::Create(Vec2(64 * 3, 64 * 4), Vec2(64 * 2, 64), Seihyouki::Angle::RIGHT, false);
+		//switch
+		Switch::Create(Vec2(64 * 2, 64 * 9), std::vector<std::shared_ptr<GameObject>>{seihyouki}, Switch::TargetType::IceMachine);
+		//横向き扉
+		auto door1 = Door::Create(Vec2(64 * 3, 64 * 11), Vec2(64 * 3, 32), false, Door::Direction::WIDTH);
+		auto door2 = Door::Create(Vec2(64 * 3, 64 * 13), Vec2(64 * 3, 32), false, Door::Direction::WIDTH);
+		door1->SetTexture(&doorTex);
+		door2->SetTexture(&doorTex);
+		//重さスイッチ
+		auto ws1 = WeightSwitch::Create(Vec2(64, 64 * 9 + 30), Vec2(64, 30), 1, std::vector<std::shared_ptr<GameObject>>{door2});
+		ws1->SetTexture(&WswitchTex);
+		auto ws2 = WeightSwitch::Create(Vec2(64*22, 64*12+30), Vec2(64, 30), 2, std::vector<std::shared_ptr<GameObject>>{door1});
+		ws2->SetTexture(&WswitchTex);
+		break;
+	}
+	case 15:	//ステージ3
+	{
+		//map生成
+		auto mapload = Map::Create((std::string)"stage3.csv");
+		//水の位置
+		_waterpos = mapload->getWaterPos();
+
+		//ゲームのサウンドに使用
+		sound.create(gamesoundname, true);
+		sound.volume(0.0f);
 		OGge->soundManager->SetSound(&sound);
 		sound.play();
 
@@ -220,8 +426,8 @@ bool Game::Initialize()
 		auto kanetsuki4 = Kanetuki::Create(Vec2(64 * 18, 64 * 29), Vec2(64 * 5, 64 + 32), Kanetuki::Angle::BOTTOM, true);
 		auto kanetsuki9 = Kanetuki::Create(Vec2(64 * 33, 64 * 32 - 20), Vec2(64 * 2, 84), Kanetuki::Angle::UP, true);
 		//製氷機
-		auto seihyouki1 = Seihyouki::Create(Vec2(64 * 9, 64 * 12), Vec2(64 * 2, 64), Seihyouki::Angle::LEFT);
-		auto seihyouki3 = Seihyouki::Create(Vec2(64 * 9, 64 * 22), Vec2(64 * 2, 64), Seihyouki::Angle::LEFT);
+		auto seihyouki1 = Seihyouki::Create(Vec2(64 * 9, 64 * 12), Vec2(64 * 2, 64), Seihyouki::Angle::LEFT, false);
+		auto seihyouki3 = Seihyouki::Create(Vec2(64 * 9, 64 * 22), Vec2(64 * 2, 64), Seihyouki::Angle::LEFT, false);
 		//扇風機スイッチ
 		auto fanSwitch1 = Switch::Create(Vec2(64 * 19, 64 * 12), std::vector<std::shared_ptr<GameObject>>{fan2, fan3}, Switch::TargetType::Fan);
 		auto fanSwitch2 = Switch::Create(Vec2(64 * 31, 64 * 31), std::vector<std::shared_ptr<GameObject>>{fan4, fan5}, Switch::TargetType::Fan);
@@ -237,8 +443,7 @@ bool Game::Initialize()
 	default:
 		std::cout << "マップ番号が存在しません" << std::endl;
 		break;
-	}
-	//水初期処理
+	}	//水初期処理
 	{
 		//水画像の読み込み
 		this->waterTex.Create("waterTex.png");
@@ -251,24 +456,19 @@ bool Game::Initialize()
 		rm->SetTextureData((std::string)"waterBlue", &this->waterBlue);
 		rm->SetTextureData((std::string)"waterPurple", &this->waterPurple);
 	}
-
+	auto back2Img = Back::Create("back2.png", 1920, 1080);
+	back2Img->SetScroll();
+	back2Img->SetDrawOrder(0.0f);
 	//水が自動で降ってくる時間の初期化
 	this->timecnt = 0;
 	//水の生成
 	auto water = Water::Create(_waterpos);
 	//画像を渡す
 	water->SetTexture(&this->waterTex);
-	switch (*MapNum)
-	{
-	case 3:
-		//プレイヤーの位置を変更
-	//	player->SetPos(Vec2(200, 400));
-		break;
-	default:
-		break;
-	}
+
 	//タスクに名前を登録
 	__super::Init((std::string)"game");
+	__super::SetDrawOrder(0.25f);
 	//ゲームクリア判定を生成
 	auto gameprocess = GameManager::Create();
 	//装飾
@@ -287,7 +487,7 @@ void Game::UpDate()
 	}
 	//カメラ処理
 	Camera_move();
-
+	ce.CameraMove();
 	// Pause処理
 	auto player = OGge->GetTask<Player>("Player");
 	if (player)
@@ -300,28 +500,35 @@ void Game::UpDate()
 		}
 	}
 
+	//フェードアウト
+	//フェードイン
+	if (canvolControl)
+	{
+		sound.volume(volControl.FadeIn(canvolControl));
+	}
+	if (canvolControl == false)
+	{
+		sound.volume(volControl.FadeOut(true));
+	}
+
+
 	//UI
 	UImng_->UpDate();
-
-	if (OGge->in->key.down(In::E))
-	{
-		auto player = OGge->GetTask<Player>("Player");
-		if (player)
-		{
-			auto effect = Effect::Create(player->position, Vec2(64, 64), Vec2(64, 64), 13, 60, 5);
-			effect->SetTexture(rm->GetTextureData((std::string)"Effect"));
-			effect->Set(effect->position, Vec2(effect->position.x, effect->position.y - 200));
-		}
-	}
 }
 //-------------------------------------------------------------------------------------------------
 void Game::Render2D()
 {
+	//水生成位置のパイプ
+	{
+		Box2D draw(_waterpos.x - 103, _waterpos.y - 150, 256.f, 171.f);
+		draw.OffsetSize();
+		Box2D src(0, 0, 768, 512);
+		pipeTex.Draw(draw, src);
+	}
 }
 //-------------------------------------------------------------------------------------------------
 bool Game::Finalize()
 {
-	//各オブジェクトが存在している場合にKillする。
 	auto map = OGge->GetTask<Map>("map");
 	if (map)
 	{
@@ -412,6 +619,29 @@ bool Game::Finalize()
 	{
 		(*id)->Kill();
 	}
+	auto goalDirection = OGge->GetTasks<GoalDirection>("GoalDirection");
+	for (auto id = goalDirection->begin(); id != goalDirection->end(); ++id)
+	{
+		(*id)->Kill();
+	}
+	auto doors = OGge->GetTasks<Door>("Door");
+	for (auto id = doors->begin(); id != doors->end(); ++id)
+	{
+		(*id)->Kill();
+	}
+	auto ws = OGge->GetTasks<WeightSwitch>("WeightSwitch");
+	for (auto id = ws->begin(); id != ws->end(); ++id) {
+		(*id)->Kill();
+	}
+	auto paints = OGge->GetTasks<Paint>("Paint");
+	for (auto id = paints->begin(); id != paints->end(); ++id)
+	{
+		(*id)->Kill();
+	}
+	auto clouds = OGge->GetTasks<Cloud>("cloud");
+	for (auto id = clouds->begin(); id != clouds->end(); ++id) {
+		(*id)->Kill();
+	}
 	rm->DeleteTexture((std::string)"playerTex");
 	rm->DeleteTexture((std::string)"waterTex");
 	rm->DeleteTexture((std::string)"Effect");
@@ -423,6 +653,8 @@ bool Game::Finalize()
 	rm->DeleteTexture((std::string)"steam");
 	rm->DeleteTexture((std::string)"goalTex");
 	rm->DeleteTexture((std::string)"fireIce");
+	rm->DeleteTexture((std::string)"goalDirectionTex");
+	rm->DeleteTexture((std::string)"arrowflowerTex");
 	this->waterTex.Finalize();
 	this->playerTex.Finalize();
 	this->fanTex.Finalize();
@@ -434,6 +666,9 @@ bool Game::Finalize()
 	this->Effectsond.Finalize();
 	this->texSteam.Finalize();
 	this->goalTex.Finalize();
+	this->goalDirectionTex.Finalize();
+	this->arrowflower.Finalize();
+	this->doorTex.Finalize();
 	return true;
 }
 //-------------------------------------------------------------------------------------------------
@@ -455,7 +690,7 @@ void Game::Camera_move()
 	{
 		if (!player->GetInputAuto())
 		{
-			OGge->camera->MovePos(player->GetEst());
+			//OGge->camera->MovePos(player->GetEst());
 
 			//カメラ処理
 			Vec2 NowCameraPos = OGge->camera->GetPos();
@@ -470,7 +705,6 @@ void Game::Camera_move()
 			//カメラの座標を更新
 			NowCameraPos.x = camera_x;
 			NowCameraPos.y = camera_y;
-
 
 			//左右のスクロール範囲の設定(サイズの10分の1)
 			float Boundary = NowCameraSize.x / 10.0f;
@@ -503,10 +737,14 @@ void Game::Camera_move()
 			if (NowCameraPos.y + NowCameraSize.y > map->mapSize.y * map->DrawSize.y) {
 				NowCameraPos.y = (map->mapSize.y * map->DrawSize.y) - NowCameraSize.y;
 			}
-
-			OGge->camera->SetPos(NowCameraPos);
+			//OGge->camera->SetPos(NowCameraPos);
+			this->CameraSetPos(NowCameraPos);
 		}
 	}
+}
+void Game::CameraSetPos(const Vec2& pos)
+{
+	ce.SetEndPos(pos);
 }
 
 Game::SP Game::Create(bool flag_)

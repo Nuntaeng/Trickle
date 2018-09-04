@@ -13,12 +13,28 @@ bool StageAlert::isExist(const std::string& path) {
 	return infoRes.find(path) != infoRes.end();
 }
 
+void StageAlert::SelectFirstElement()
+{
+	SetStageData(infoRes.begin()->first);
+}
+
 void StageAlert::setActive(const bool& a){
 	active = a;
 }
 
 bool StageAlert::isActive() const {
 	return active;
+}
+
+void StageAlert::setPosition(const Vec2& p)
+{
+	position = p;
+	positioning();
+}
+
+Vec2 StageAlert::getPosition() const
+{
+	return position;
 }
 
 StageAlert::SP StageAlert::Create(bool flag_, const Box2D& winSize)
@@ -44,10 +60,18 @@ bool StageAlert::Initialize(const Box2D& winSize) {
 	background.Create((std::string)"selectframe2.png");
 	background.Rotate(180.f);
 	clearFlag.Create((std::string)"selectflower.png");
-	clearStarTex.Create((std::string)"Ster.png");
-	normalStarTex.Create((std::string)"SterB.png");
-	rm->SetTextureData((std::string)"Ster.png", &clearStarTex);
-	rm->SetTextureData((std::string)"SterB.png", &normalStarTex);
+	clearStarTex = rm->GetTextureData((std::string)"Ster.png");
+	if (clearStarTex == nullptr) {
+		clearStarTex = new Texture();
+		clearStarTex->Create((std::string)"Ster.png");
+		rm->SetTextureData((std::string)"Ster.png", clearStarTex);
+	}
+	normalStarTex = rm->GetTextureData((std::string)"SterB.png");
+	if (normalStarTex == nullptr) {
+		normalStarTex = new Texture();
+		normalStarTex->Create((std::string)"SterB.png");
+		rm->SetTextureData((std::string)"SterB.png", normalStarTex);
+	}
 
 	windowSize = winSize;
 	draws.insert({ &background, Box2D(350, 0, 1625, 650) });
@@ -88,10 +112,52 @@ bool StageAlert::Initialize(const Box2D& winSize) {
 			(int)windowSize.h - 325
 		));
 	previewer->setVisible(active);
+	this->setPosition(Vec2(winSize.x, winSize.y));
 
 	__super::Init((std::string)"stagealert");
 	__super::SetDrawOrder(0.8f);
 	return true;
+}
+
+void StageAlert::positioning()
+{
+	draws[&background] = Box2D((int)position.x, (int)position.y, 1625, 650);
+	srcs[&background] = Box2D(0, 0, TEXTURE_SIZE(background).x, TEXTURE_SIZE(background).y);
+	Box2D batch = Box2D((int)draws[&background].x + 450, (int)draws[&background].y + 195, 50, 50);
+	for (int i = 0; i < starFixedDraw.size(); ++i) {
+		starFixedDraw[i] = batch;
+		achievementFixedDraw[i] = batch;
+		achievementFixedDraw[i].x += 60.f;
+		achievementFixedDraw[i].w = 600.f;
+		batch.y += 50;
+	}
+
+	missionDraw = Box2D(
+		(int)draws[&background].x + 195,
+		(int)draws[&background].y + 220,
+		260, 64
+	);
+	missionSrc = Box2D(0, 643, 420, 62);
+
+	titleDraw = draws[&background];
+	titleDraw.x += 530;
+	titleDraw.y += 80;
+	titleDraw.w = 600;
+	titleDraw.h = 110;
+
+	clearFlagDraw = draws[&background];
+	clearFlagDraw.x += 1200;
+	clearFlagDraw.y += 70;
+	clearFlagDraw.w = 270;
+	clearFlagDraw.h = 270;
+
+	previewer->setSize(
+		Box2D(
+			int(position.x + 200),
+			int(position.y + 350),
+			int(windowSize.w - 100),
+			int(windowSize.h - 325)
+		));
 }
 #undef TEXTURE_SIZE
 
@@ -145,17 +211,17 @@ void StageAlert::Render2D() {
 		for (int i = 0; i < StageInfoRes::MAX_ACHIEVEMENT; ++i) {
 			if (currentRes->isThisAchievementClear(i)) {
 				draw = starFixedDraw[i];
-				src = getSrcOriginal(&clearStarTex);
+				src = getSrcOriginal(clearStarTex);
 				draw.OffsetSize();
 				src.OffsetSize();
-				clearStarTex.Draw(draw, src);
+				clearStarTex->Draw(draw, src);
 			}
 			else {
 				draw = starFixedDraw[i];
-				src = getSrcOriginal(&normalStarTex);
+				src = getSrcOriginal(normalStarTex);
 				draw.OffsetSize();
 				src.OffsetSize();
-				normalStarTex.Draw(draw, src);
+				normalStarTex->Draw(draw, src);
 			}
 			draw = achievementFixedDraw[i];
 			src = currentRes->achievement[i].first;
@@ -182,10 +248,14 @@ void StageAlert::Finalize() {
 		delete r.second;
 	}
 	clearFlag.Finalize();
-	clearStarTex.Finalize();
-	normalStarTex.Finalize();
-	rm->DeleteTexture((std::string)"Ster.png");
-	rm->DeleteTexture((std::string)"SterB.png");
+	if (rm->GetTextureData((std::string)"Ster.png") != nullptr) {
+		rm->DeleteTexture((std::string)"Ster.png");
+		delete clearStarTex;
+	}
+	if (rm->GetTextureData((std::string)"SterB.png") != nullptr) {
+		rm->DeleteTexture((std::string)"SterB.png");
+		delete normalStarTex;
+	}
 }
 
 inline Box2D StageAlert::GetFixedCameraCoord(const Box2D& origin) const {
@@ -205,6 +275,9 @@ Box2D StageAlert::OptimizeForWindowSize(const Box2D& b) const
 
 void StageAlert::SetStageData(const std::string& fPath) {
 	currentRes = infoRes[fPath];
+	if (!currentRes) {
+		return;
+	}
 	previewer->replaceThumbnail(&currentRes->mapInfo);
 	previewer->setVisible(true);
 }

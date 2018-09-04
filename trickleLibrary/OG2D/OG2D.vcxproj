@@ -112,6 +112,8 @@
       <SubSystem>Console</SubSystem>
       <AdditionalLibraryDirectories>Windows\lib\Debug</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>opencv_core342.dll;opencv_videoio342.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -149,6 +151,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>Windows/lib/Release</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <DelayLoadDLLs>opencv_core342.dll;opencv_videoio342.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -160,11 +163,13 @@
     <ClCompile Include="src\Effect\Effect.cpp" />
     <ClCompile Include="src\GameProcessManagement\GameProcessManagement.cpp" />
     <ClCompile Include="src\Gate\Gate.cpp" />
+    <ClCompile Include="src\Gimmick\NO_MOVE\Door.cpp" />
     <ClCompile Include="src\Gimmick\NO_MOVE\Seihyouki.cpp" />
     <ClCompile Include="src\Gimmick\NO_MOVE\Kanetuki.cpp" />
     <ClCompile Include="src\Gimmick\NO_MOVE\Senpuki.cpp" />
     <ClCompile Include="src\Gimmick\NO_MOVE\Switch.cpp" />
     <ClCompile Include="src\Gimmick\NO_MOVE\TimeSign.cpp" />
+    <ClCompile Include="src\Gimmick\NO_MOVE\WeightSwitch.cpp" />
     <ClCompile Include="src\Goal\Goal.cpp" />
     <ClCompile Include="src\Load\LoadLogo.cpp" />
     <ClCompile Include="src\Map\Map.cpp" />
@@ -176,7 +181,7 @@
     <ClCompile Include="src\OGSystem\Audio\StreamingSound.cpp" />
     <ClCompile Include="src\OGSystem\Camera\Camera.cpp" />
     <ClCompile Include="src\OGSystem\Collision\Collision.cpp" />
-    <ClCompile Include="src\OGSystem\Font\Font.cpp" />
+    <ClCompile Include="src\OGSystem\Font\TextureFont.cpp" />
     <ClCompile Include="src\OGSystem\FPS\FPS.cpp" />
     <ClCompile Include="src\OGSystem\Input\Input.cpp" />
     <ClCompile Include="src\OGSystem\OGlib.cpp" />
@@ -193,15 +198,19 @@
     <ClCompile Include="src\Player\Player.cpp" />
     <ClCompile Include="src\Recorder\Recorder.cpp" />
     <ClCompile Include="src\Recorder\RecPlayer.cpp" />
+    <ClCompile Include="src\Task\JecLogo.cpp" />
     <ClCompile Include="src\Task\MapPreviewer.cpp" />
     <ClCompile Include="src\Task\StageInfoRes.cpp" />
     <ClCompile Include="src\Task\StageSelect.cpp" />
+    <ClCompile Include="src\Task\Task_Credit.cpp" />
+    <ClCompile Include="src\Task\Task_Demo.cpp" />
     <ClCompile Include="src\Task\Task_Game.cpp" />
     <ClCompile Include="src\Task\Task_Pause.cpp" />
     <ClCompile Include="src\Task\Task_Result.cpp" />
     <ClCompile Include="src\Task\Task_StageAlert.cpp" />
     <ClCompile Include="src\Task\Task_Title.cpp" />
     <ClCompile Include="src\Task\Task_TitleMovement.cpp" />
+    <ClCompile Include="src\UI\GoalDirectionUI.cpp" />
     <ClCompile Include="src\UI\UI.cpp" />
     <ClCompile Include="src\VolumeControl\volumeControl.cpp" />
     <ClCompile Include="src\Water\water.cpp" />
@@ -216,11 +225,13 @@
     <ClInclude Include="src\Effect\Effect.h" />
     <ClInclude Include="src\GameProcessManagement\GameProcessManagement.h" />
     <ClInclude Include="src\Gate\Gate.h" />
+    <ClInclude Include="src\Gimmick\NO_MOVE\Door.h" />
     <ClInclude Include="src\Gimmick\NO_MOVE\Seihyouki.h" />
     <ClInclude Include="src\Gimmick\NO_MOVE\Kanetuki.h" />
     <ClInclude Include="src\Gimmick\NO_MOVE\Senpuki.h" />
     <ClInclude Include="src\Gimmick\NO_MOVE\Switch.h" />
     <ClInclude Include="src\Gimmick\NO_MOVE\TimeSign.h" />
+    <ClInclude Include="src\Gimmick\NO_MOVE\WeightSwitch.h" />
     <ClInclude Include="src\Goal\Goal.h" />
     <ClInclude Include="src\Load\LoadLogo.h" />
     <ClInclude Include="src\Map\Map.h" />
@@ -233,12 +244,13 @@
     <ClInclude Include="src\OGSystem\Camera\Camera.h" />
     <ClInclude Include="src\OGSystem\Collision\Collision.h" />
     <ClInclude Include="src\OGSystem\Easing\easing.hpp" />
-    <ClInclude Include="src\OGSystem\Font\Font.h" />
+    <ClInclude Include="src\OGSystem\Font\TextureFont.h" />
     <ClInclude Include="src\OGSystem\FPS\FPS.h" />
     <ClInclude Include="src\OGSystem\Input\Input.h" />
     <ClInclude Include="src\OGSystem\OGlib.h" />
     <ClInclude Include="src\OGSystem\OGsystem.h" />
     <ClInclude Include="src\OGSystem\OGTask.h" />
+    <ClInclude Include="src\OGSystem\randmais.h" />
     <ClInclude Include="src\OGSystem\Random\Random.h" />
     <ClInclude Include="src\OGSystem\ResourceManager\ResourceManager.h" />
     <ClInclude Include="src\OGSystem\TaskObject.h" />
@@ -251,15 +263,19 @@
     <ClInclude Include="src\Recorder\RecDef.h" />
     <ClInclude Include="src\Recorder\Recorder.h" />
     <ClInclude Include="src\Recorder\RecPlayer.h" />
+    <ClInclude Include="src\Task\JecLogo.h" />
     <ClInclude Include="src\Task\MapPreviewer.h" />
     <ClInclude Include="src\Task\StageInfoRes.h" />
     <ClInclude Include="src\Task\StageSelect.h" />
+    <ClInclude Include="src\Task\Task_Credit.h" />
+    <ClInclude Include="src\Task\Task_Demo.h" />
     <ClInclude Include="src\Task\Task_Game.h" />
     <ClInclude Include="src\Task\Task_Pause.h" />
     <ClInclude Include="src\Task\Task_Result.h" />
     <ClInclude Include="src\Task\Task_StageAlert.h" />
     <ClInclude Include="src\Task\Task_Title.h" />
     <ClInclude Include="src\Task\Task_TitleMovement.h" />
+    <ClInclude Include="src\UI\GoalDirectionUI.h" />
     <ClInclude Include="src\UI\UI.h" />
     <ClInclude Include="src\VolumeControl\volumeControl.h" />
     <ClInclude Include="src\Water\water.h" />

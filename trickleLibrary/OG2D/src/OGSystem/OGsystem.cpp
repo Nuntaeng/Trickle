@@ -101,7 +101,7 @@ void EngineSystem::Task_Render_AF()
 	//•`‰æ‡‚ÉDraw2D‚ğÀs‚·‚é
 	for (int i = 0; i < this->taskobjects.size(); ++i)
 	{
-		if (this->taskobjects[this->Orders[i].id].second->GetKillCount() == 0)
+		if (this->taskobjects[this->Orders[i].id].second->GetKillCount() <= 0)
 		{
 			this->taskobjects[this->Orders[i].id].second->T_Render();
 		}
@@ -110,7 +110,7 @@ void EngineSystem::Task_Render_AF()
 void EngineSystem::TaskGameUpDate()
 {
 	this->Task_UpDate();		//XVˆ—
-	this->camera->CameraUpdate();
+	this->camera->UpDate();
 	this->Task_Render_AF();		//•`‰æˆ—
 	if (this->CheckAddTask() || this->CheckKillTask())
 	{
@@ -197,7 +197,7 @@ void EngineSystem::TaskApplication()
 	//“o˜^—\’è‚Ì‚à‚Ì‚ğ“o˜^‚·‚é
 	for (int i = 0; i < this->addTaskObjects.size(); ++i)
 	{
-		std::pair<DWORD, TaskObject::SP> d;
+		std::pair<int, TaskObject::SP> d;
 		d.second = this->addTaskObjects[i];
 		if (d.second->GetNextTask())
 		{
@@ -216,10 +216,6 @@ void EngineSystem::TaskKillCheck()
 		{
 			if (id->second->GetKillCount() > 0)
 			{
-				if (id->second->GetTaskName() == "Goal")
-				{
-					int a = 0;
-				}
 				this->taskobjects.erase(id);
 				this->TaskApplication();
 				id = this->taskobjects.begin();
@@ -281,16 +277,22 @@ void EngineSystem::DeleteTasks()
 	this->TaskKillCheck();		//íœ—\’è‚Ìƒ^ƒXƒN‚ğíœ‚·‚é
 	this->ConfigDrawOrder();	//ƒ^ƒXƒN‚ÌW‡‘Ì‚Ì•ÏXŒã‚É•`‰æ‡‚ğİ’è‚·‚é
 }
-//template <class T> std::shared_ptr<T> EngineSystem::GetTask(const std::string& taskName)
-//{
-//	for (auto id = this->taskobjects.begin(); id != this->taskobjects.end(); ++id)
-//	{
-//		if ((*id).second->taskName == taskName)
-//		{
-//			return std::static_pointer_cast<T>((*id).second);
-//		}
-//	}
-//	return nullptr;
-//}
+void EngineSystem::AllStop(const bool flag)
+{
+	for (auto id = taskobjects.begin(); id != taskobjects.end(); ++id)
+	{
+		if (id->second)
+		{
+			id->second->Stop(flag);
+		}
+	}
+	for (auto id = addTaskObjects.begin(); id != addTaskObjects.end(); ++id)
+	{
+		if ((*id))
+		{
+			(*id)->Stop(flag);
+		}
+	}
+}
 EngineSystem* OGge;
 ResourceManager* rm;

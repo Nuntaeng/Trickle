@@ -3,9 +3,11 @@
 #include "Block\block.h"
 #include "Player\Player.h"
 #include "Effect\Effect.h"
+#include "Gimmick\NO_MOVE\Door.h"
+#include "Gimmick/NO_MOVE/WeightSwitch.h"
 //#include "Paint\Paint.h"
-Water::Water(Vec2 pos)
-	:MAX_FALL(15.f), GRAVITY((9.8f / 60.f / 60.f*32.f) * 5), FIN_SPEED(1.0f), RAIN_TIME(180)
+Water::Water(const Vec2& pos)
+	:maxFall(15.f), gravity((9.8f / 60.f / 60.f*32.f) * 5), finSpeed(1.0f), rainTime(180)
 {
 	//タグ設定
 	this->objectTag = "water";
@@ -54,16 +56,40 @@ Water::Water(Vec2 pos)
 	//所持状態の初期化
 	this->hold = false;
 	//当たり判定を制限
-	this->Radius = { 0.5f,0.9f };
+	this->Radius = { 0.5f,1.f };
+	//左右判定を初期化
+	this->left = nullptr;
+	this->right = nullptr;
 	//タグの指定
 	__super::Init((std::string)"water");
 	//描画優先度の設定
 	__super::SetDrawOrder(0.2f);
+	//重さ設定仮
+	if (this->volume < 1.0f)
+	{
+		this->mass = 0.5f;
+	}
+	else if(this->volume>=1.0f)
+	{
+		this->mass = 1.0f;
+	}
+	//カウンター初期化
+	this->iceCnt = 0;
+	this->fireCnt = 0;
 }
 
 Water::~Water()
 {
-
+	if (this->left)
+	{
+		delete this->left;
+		this->left = nullptr;
+	}
+	if (this->right)
+	{
+		delete this->right;
+		this->right = nullptr;
+	}
 }
 
 
@@ -124,7 +150,7 @@ void Water::UpDate()
 				}
 			}
 			//静止時間が雨を降らす時間分を超えたとき
-			if (this->RAIN_TIME < this->nowTime)
+			if (this->rainTime < this->nowTime)
 			{
 				this->nowSituation = Situation::Rainfrom;
 				this->nowTime = 0;
@@ -178,6 +204,7 @@ void Water::UpDate()
 			this->Friction();	
 			this->nowMove = this->move;
 			this->MoveSOILDCheck(this->nowMove);
+			this->SolidExtrusion();
 		}
 		break;
 	}
@@ -219,16 +246,7 @@ Water::Situation Water::UpNormal()
 {
 	
 	Water::Situation now = this->nowSituation;
-	auto map = OGge->GetTask<Map>("map");
-	if ((map && map->HitCheck(*this, 0) || this->FootCheck((std::string)"Floor") || this->FootCheck((std::string)"Soil") || this->FootCheck((std::string)"Ladder")))
-	{
-		now = Water::Situation::Deleteform;
-		this->nowTime = 0;
-	}
-	else
-	{
-		this->Friction();
-	}
+	this->Friction();
 	return now;
 }
 
@@ -252,7 +270,7 @@ void Water::Render2D()
 	if (this->currentState == State::LIQUID && this->nowSituation == Situation::Deleteform)
 	{
 		src.y += 256;
-		src.x = (this->nowTime / 6) * 256;
+		src.x = (float)((this->nowTime / 6) * 256);
 	}
 	src.OffsetSize();
 	this->tex->Draw(draw, src, color_a);
@@ -314,17 +332,17 @@ void Water::Friction()
 {
 	if (this->move.x > 0)
 	{
-		this->move.x = std::max(this->move.x - this->FIN_SPEED, 0.f);
+		this->move.x = std::max(this->move.x - this->finSpeed, 0.f);
 	}
 	else
 	{
-		this->move.x = std::min(this->move.x + this->FIN_SPEED, 0.f);
+		this->move.x = std::min(this->move.x + this->finSpeed, 0.f);
 	}
 	if (this->currentState != State::GAS)
 	{
 		if (!this->FootCheck(std::string("Floor")) || !this->FootSolidCheck() || this->move.y < 0)
 		{
-			this->move.y = std::min(this->move.y + this->GRAVITY, this->MAX_FALL);
+			this->move.y = std::min(this->move.y + this->gravity, this->maxFall);
 		}
 		else
 		{
@@ -332,12 +350,12 @@ void Water::Friction()
 		}
 	}
 }
-bool Water::FootCheck(std::string& objtag, int n)
+bool Water::FootCheck(const std::string& objtag, const int n)
 {
 	GameObject foot;
 	float x_ = this->Scale.x - (this->Scale.x * this->Radius.x);
 	float y_ = this->Scale.y - (this->Scale.y * this->Radius.y);
-	foot.CreateObject(Objform::Cube, Vec2(this->position.x + (x_ / 2.f), this->position.y + this->Scale.y + (y_ / 2.f) + 0.1f), Vec2(this->Scale.x - x_, 0.9f), 0.0f);
+	foot.CreateObject(Objform::Cube, Vec2(this->position.x + (x_ / 2.f), this->position.y + this->Scale.y + (y_ / 2.f)), Vec2(this->Scale.x - x_, 1.0f), 0.0f);
 	auto map = OGge->GetTask<Map>("map");
 	if (!map)
 	{
@@ -349,6 +367,17 @@ bool Water::FootCheck(std::string& objtag, int n)
 	}
 	auto blocks = OGge->GetTasks<Block>("block");
 	for (auto id = blocks->begin(); id != blocks->end(); ++id)
+	{
+		if (foot.IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+		{
+			if (foot.hit(*(*id)))
+			{
+				return true;
+			}
+		}
+	}
+	auto doors = OGge->GetTasks<Door>("Door");
+	for (auto id = doors->begin(); id != doors->end(); ++id)
 	{
 		if (foot.IsObjectDistanceCheck((*id)->position, (*id)->Scale))
 		{
@@ -390,7 +419,7 @@ bool Water::FootSolidCheck()
 			{
 				if (foot.IsObjectDistanceCheck((*id)->position, (*id)->Scale))
 				{
-					if (foot.hit(*(*id)))
+					if (foot.CubeHit(*(*id)))
 					{
 						return true;
 					}
@@ -404,6 +433,7 @@ bool Water::FootSolidCheck()
 void Water::MoveWATERCheck(Vec2& est)
 {
 	auto map = OGge->GetTask<Map>("map");
+	auto doors = OGge->GetTasks<Door>("Door");
 	if (!map)
 	{
 		this->position += est;
@@ -432,6 +462,18 @@ void Water::MoveWATERCheck(Vec2& est)
 			this->position.x = preX;
 			break;
 		}
+		for (auto id = doors->begin(); id != doors->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				//if (this->hit(*(*id)))
+				if((*id)->hit(*this))
+				{
+					this->position.x = preX;
+					break;
+				}
+			}
+		}
 	}
 	while (est.y != 0.f)
 	{
@@ -456,12 +498,34 @@ void Water::MoveWATERCheck(Vec2& est)
 			this->position.y = preY;
 			break;
 		}
+		for (auto id = doors->begin(); id != doors->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if ((*id)->hit(*this))
+				{
+					this->position.y = preY;
+					break;
+				}
+			}
+		}
+	}
+	if ((map && map->HitCheck(*this, 0) || 
+		this->FootCheck((std::string)"Floor") || 
+		this->FootCheck((std::string)"Soil") || 
+		this->FootCheck((std::string)"Ladder") ||
+		this->FootCheck("door")))
+	{
+		this->nowSituation = Water::Situation::Deleteform;
+		this->nowTime = 0;
+		this->move = { 0,0 };
 	}
 }
 
 void Water::MoveGASCheck(Vec2& est)
 {
 	auto map = OGge->GetTask<Map>("map");
+	auto doors = OGge->GetTasks<Door>("Door");
 	while (est.x != 0.f)
 	{
 		float preX = this->position.x;
@@ -485,6 +549,17 @@ void Water::MoveGASCheck(Vec2& est)
 			this->position.x = preX;
 			break;
 		}
+		for (auto id = doors->begin(); id != doors->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.x = preX;
+					break;
+				}
+			}
+		}
 	}
 	while (est.y != 0.f)
 	{
@@ -509,6 +584,17 @@ void Water::MoveGASCheck(Vec2& est)
 			this->position.y = preY;
 			break;
 		}
+		for (auto id = doors->begin(); id != doors->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.y = preY;
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -517,6 +603,10 @@ void Water::MoveSOILDCheck(Vec2& est)
 	auto map = OGge->GetTask<Map>("map");
 	auto waters = OGge->GetTasks<Water>("water");
 	auto blocks = OGge->GetTasks<Block>("block");
+	auto doors = OGge->GetTasks<Door>("Door");
+	//テスト用追加
+	auto Wswitch = OGge->GetTasks<WeightSwitch>("WeightSwitch");
+
 	while (est.x != 0.f)
 	{
 		float preX = this->position.x;
@@ -568,6 +658,30 @@ void Water::MoveSOILDCheck(Vec2& est)
 				}
 			}
 		}
+		for (auto id = doors->begin(); id != doors->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.x = preX;
+					break;
+				}
+			}
+		}
+		//テスト用追加
+		for (auto id = Wswitch->begin(); id != Wswitch->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.x = preX;
+					break;
+				}
+			}
+		}
+
 	}
 	while (est.y != 0.f)
 	{
@@ -620,10 +734,35 @@ void Water::MoveSOILDCheck(Vec2& est)
 				}
 			}
 		}
+		for (auto id = doors->begin(); id != doors->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.y = preY;
+					break;
+				}
+			}
+		}
+		//テスト用追加
+		for (auto id = Wswitch->begin(); id != Wswitch->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.y = preY;
+					this->position.y += (*id)->SetSwitchUpPos();
+					break;
+				}
+			}
+		}
+
 	}
 }
 
-bool Water::HeadCheck(std::string& objtag, int n)
+bool Water::HeadCheck(const std::string& objtag, const int n)
 {
 	GameObject head;
 	float x_ = this->Scale.x - (this->Scale.x * this->Radius.x);
@@ -668,6 +807,31 @@ bool Water::HeadSolidCheck()
 					{
 						return true;
 					}
+				}
+			}
+		}
+	}
+	auto doors = OGge->GetTasks<Door>("Door");
+	for (auto id = doors->begin(); id != doors->end(); ++id)
+	{
+		if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+		{
+			if (this->CubeHit(*(*id)))
+			{
+				return true;
+			}
+		}
+	}
+	if (!this->hold)
+	{
+		auto player = OGge->GetTasks<Player>("Player");
+		for (auto id = player->begin(); id != player->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (head.CubeHit(*(*id)))
+				{
+					return true;
 				}
 			}
 		}
@@ -724,7 +888,7 @@ Paint::PaintColor Water::GetColor() const
 	return this->color;
 }
 
-void Water::MovePos(Vec2& est)
+void Water::MovePos(const Vec2& est)
 {
 	this->move = est;
 }
@@ -739,7 +903,7 @@ bool Water::IsBucket()
 	return this->GetSituation() == Water::Situation::Normal && this->GetState() == Water::State::LIQUID && this->invi <= 0;
 }
 
-void Water::SetMaxSize(Vec2& max)
+void Water::SetMaxSize(const Vec2& max)
 {
 	this->maxSize = max;
 }
@@ -792,12 +956,12 @@ void Water::CheckState()
 			this->objectTag = "GAS";
 			this->Radius = { 0.5f,0.8f };
 			this->nowSituation = Situation::Normal;
-			this->FIN_SPEED = 1.0f;
+			this->finSpeed = 1.0f;
 			break;
 		case State::LIQUID:
 			this->Radius = { 0.5f,0.9f };
 			this->objectTag = "LIQUID";
-			this->FIN_SPEED = 1.0f;
+			this->finSpeed = 1.0f;
 			break;
 		case State::SOLID:
 			this->Scale = this->maxSize;
@@ -827,7 +991,7 @@ void Water::CheckState()
 			this->objectTag = "SOLID";
 			this->Radius = { 0.7f,0.7f };
 			this->nowSituation = Situation::Normal;
-			this->FIN_SPEED = 0.05f;
+			this->finSpeed = 0.05f;
 			break;
 		}
 	}
@@ -838,7 +1002,7 @@ void Water::MovePos_x(float est)
 	this->move.x = est;
 }
 
-bool Water::SolidMelt()
+void Water::SolidMelt()
 {
 	if (this->currentState == State::SOLID)
 	{
@@ -857,7 +1021,7 @@ bool Water::SolidMelt()
 		this->SetSituation(Situation::Normal);
 		//氷が溶けた時のエフェクト
 		auto effect = Effect::Create(
-			Vec2(this->position.x + (this->Scale.x / 2) - (128.f / 2), this->position.y + this->Scale.y - (128.f / 1.5)),
+			Vec2(this->position.x + (this->Scale.x / 2.f) - (128.f / 2.f), this->position.y + this->Scale.y - (128.f / 1.5f)),
 			Vec2(128, 128),
 			Vec2(768, 768),
 			1,
@@ -867,7 +1031,6 @@ bool Water::SolidMelt()
 		//effect->SetMaxSize(Vec2(80, 80));
 		effect->Set(effect->position, Vec2(effect->position.x, effect->position.y - 200), 30);
 	}
-	return false;
 }
 void Water::SetScale(const Vec2& s)
 {
@@ -877,16 +1040,85 @@ unsigned int Water::GetID() const
 {
 	return this->id;
 }
-Water::SP Water::Create(Vec2& pos, bool flag_)
+bool Water::SolidExtrusion()
+{
+	auto waters = OGge->GetTasks<Water>("water");
+	float x_ = this->Scale.x - (this->Scale.x * this->Radius.x);
+	float y_ = this->Scale.y - (this->Scale.y * this->Radius.y);
+	for (auto id = waters->begin(); id != waters->end(); ++id)
+	{
+		//自分以外でありかつ相手が氷であるとき
+		if (this->id != (*id)->id && (*id)->objectTag == "SOLID")
+		{
+			//自分の周辺に相手が存在する場合
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				//移動値がプラスなら
+				if(this->move.x > 0)
+				{
+					//左方向の当たり判定が存在しないなら生成
+					if (!this->right)
+					{
+						this->right = new GameObject();
+						right->CreateObject(Cube,
+							Vec2(this->position.x + (x_ / 2.f) + (this->Scale.x * this->Radius.x), this->position.y + (y_ / 2.f)),
+							Vec2(1.0f, this->Scale.y - y_));
+					}
+					//当たっているか確認
+					if (right->CubeHit(*(*id)))
+					{
+						//相手を移動させる
+						((*id))->MoveSolid(this->move);
+						delete this->right;
+						this->right = nullptr;
+						this->move.x = 0.f;
+						return true;
+					}
+				}
+				//移動値がマイナスなら
+				if (this->move.x < 0)
+				{
+					//右方向の当たり判定が存在しないなら生成
+					if (!this->left)
+					{
+						this->left = new GameObject();
+						left->CreateObject(Cube,
+							Vec2(this->position.x + (x_ / 2.f) - 1.0f, this->position.y + (y_ / 2.f)),
+							Vec2(1.0f, this->Scale.y - y_));
+					}
+					//当たっているか確認
+					if (left->CubeHit(*(*id)))
+					{
+						//相手を移動させる
+						((*id))->MoveSolid(this->move);
+						delete this->left;
+						this->left = nullptr;
+						this->move.x = 0.f;
+						return true;
+					}
+				}
+			}
+		}
+	}
+	if (this->left)
+	{
+		delete this->left;
+		this->left = nullptr;
+	}
+	if (this->right)
+	{
+		delete this->right;
+		this->right = nullptr;
+	}
+	return false;
+}
+Water::SP Water::Create(const Vec2& pos)
 {
 	auto to = Water::SP(new Water(pos));
 	if (to)
 	{
 		to->me = to;
-		if (flag_)
-		{
-			OGge->SetTaskObject(to);
-		}
+		OGge->SetTaskObject(to);
 		if (!to->Initialize())
 		{
 			to->Kill();
@@ -894,4 +1126,20 @@ Water::SP Water::Create(Vec2& pos, bool flag_)
 		return to;
 	}
 	return nullptr;
+}
+void Water::SetIceCnt(const unsigned int& n)
+{
+	this->iceCnt = n;
+}
+unsigned int Water::GetIceCnt() const
+{
+	return this->iceCnt;
+}
+void Water::SetFireCnt(const unsigned int& n)
+{
+	this->fireCnt = n;
+}
+unsigned int Water::GetFireCnt() const
+{
+	return this->fireCnt;
 }

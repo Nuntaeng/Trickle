@@ -11,7 +11,7 @@
 #include "Input\Input.h"
 #include "Texture\Texture.h"
 #include "Collision\Collision.h"
-#include "Font\Font.h"
+#include "Font\TextureFont.h"
 #include "Audio\SoundManager.h"
 #include "Timer\glTimer.h"
 #include "Easing\easing.hpp"
@@ -81,6 +81,7 @@ public:
 	bool DebugFunction;			//デバッグ機能
 	void SetPause(const bool);	//ポーズ設定
 	bool GetPause() const;		//ポーズを返す
+	void AllStop(const bool = true);
 	void GameEnd();				//アプリケーション終了登録
 	bool GetEnd() const;		//アプリケーション終了を返す
 	void ChengeTask();			//タスク変更時処理
@@ -149,7 +150,7 @@ private:
 	void Task_Render_AF();		//タスク描画処理
 	void TaskKillCheck();		//削除予定のタスクを削除
 	void AllTaskDelete();		//登録タスク全削除
-	std::vector<std::pair<DWORD, TaskObject::SP>> taskobjects;	//タスクオブジェクト達
+	std::vector<std::pair<int, TaskObject::SP>> taskobjects;	//タスクオブジェクト達
 	std::vector<TaskObject::SP> addTaskObjects;	//登録予定タスク達
 };
 

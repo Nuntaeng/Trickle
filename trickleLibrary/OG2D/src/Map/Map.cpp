@@ -5,13 +5,17 @@
 #include "Gimmick\NO_MOVE\TimeSign.h"
 #include "Goal\Goal.h"
 #include "Paint\Paint.h"
+
+#include "UI/GoalDirectionUI.h"
 Map::Map()
+	:_FilePath("./data/map/")
 {
 	this->chip.resize(45);
 	this->chipimgname = "mapchip2.png";
 	this->chipsize = { 256,256 };
 	this->DrawSize = { 64,64 };
 	__super::Init((std::string)"map");
+	__super::SetDrawOrder(0.1f);
 }
 
 Map::~Map()
@@ -23,7 +27,7 @@ Map::~Map()
 	}
 }
 
-bool Map::LoadMap(std::string& path_, Format format)
+bool Map::LoadMap(const std::string& path_, const Format& format)
 {
 	if (Format::csv != format)
 	{
@@ -128,9 +132,20 @@ bool Map::LoadMap(std::string& path_, Format format)
 				break;
 			case 14:
 				this->hitBase[y][x].Scale.y = 12.0f;		//‰¼ˆ—Aã•ûŒü‹à–Ô‚Ì‚Ý“–‚½‚è”»’è‚Ì‚‚³‚ð20‚É§ŒÀ
-			case 15:
-			case 16:
-			case 17:
+				this->hitBase[y][x].SetID(1);
+				break;
+			case 15:	//bug
+				//this->hitBase[y][x].position.x += 64 - 12;
+				this->hitBase[y][x].Scale.x = 12.f;
+				this->hitBase[y][x].SetID(1);
+				break;
+			case 16:	//bug
+				//this->hitBase[y][x].position.y += 64 - 12;
+				this->hitBase[y][x].Scale.y = 12.f;
+				this->hitBase[y][x].SetID(1);
+				break;
+			case 17:	//bug
+				this->hitBase[y][x].Scale.x = 12.f;
 				this->hitBase[y][x].SetID(1);
 				this->hitBase[y][x].objectTag = "Net";
 				break;
@@ -180,7 +195,7 @@ bool Map::LoadMap(std::string& path_, Format format)
 	return true;
 }
 
-void Map::ObjectCreateCheck(std::string& text, int x_index, int y_index)
+void Map::ObjectCreateCheck(const std::string& text, int x_index, int y_index)
 {
 	if (text == "p")
 	{
@@ -197,6 +212,8 @@ void Map::ObjectCreateCheck(std::string& text, int x_index, int y_index)
 	{
 		auto goal = Goal::Create(Vec2(this->DrawSize.x * x_index, this->DrawSize.y * y_index));
 		goal->SetTexture(rm->GetTextureData((std::string)"goalTex"));
+		auto goalDirection = GoalDirection::Create(goal);
+		goalDirection->SetTextrue(rm->GetTextureData((std::string)"goalDirectionTex"), rm->GetTextureData((std::string)"arrowflowerTex"));
 		return;
 	}
 	if (text == "gred")
@@ -204,6 +221,8 @@ void Map::ObjectCreateCheck(std::string& text, int x_index, int y_index)
 		auto goal = Goal::Create(Vec2(this->DrawSize.x * x_index, this->DrawSize.y * y_index));
 		goal->SetTexture(rm->GetTextureData((std::string)"goalTex"));
 		goal->SetColor(Paint::PaintColor::Red);
+		auto goalDirection = GoalDirection::Create(goal);
+		goalDirection->SetTextrue(rm->GetTextureData((std::string)"goalDirectionTex"), rm->GetTextureData((std::string)"arrowflowerTex"));
 		return;
 	}
 	if (text == "gblue")
@@ -211,6 +230,8 @@ void Map::ObjectCreateCheck(std::string& text, int x_index, int y_index)
 		auto goal = Goal::Create(Vec2(this->DrawSize.x * x_index, this->DrawSize.y * y_index));
 		goal->SetTexture(rm->GetTextureData((std::string)"goalTex"));
 		goal->SetColor(Paint::PaintColor::Blue);
+		auto goalDirection = GoalDirection::Create(goal);
+		goalDirection->SetTextrue(rm->GetTextureData((std::string)"goalDirectionTex"), rm->GetTextureData((std::string)"arrowflowerTex"));
 		return;
 	}
 	if (text == "gpurple")
@@ -218,12 +239,14 @@ void Map::ObjectCreateCheck(std::string& text, int x_index, int y_index)
 		auto goal = Goal::Create(Vec2(this->DrawSize.x * x_index, this->DrawSize.y * y_index));
 		goal->SetTexture(rm->GetTextureData((std::string)"goalTex"));
 		goal->SetColor(Paint::PaintColor::Purple);
+		auto goalDirection = GoalDirection::Create(goal);
+		goalDirection->SetTextrue(rm->GetTextureData((std::string)"goalDirectionTex"), rm->GetTextureData((std::string)"arrowflowerTex"));
 		return;
 	}
 	if (text == "t") 
 	{
 		auto inTimer = TimeSign::Create("frame.png", Box2D(this->DrawSize.x * x_index, this->DrawSize.y * y_index - 64.f, 144.f, 128.f), true);
-		inTimer->setAtlas("number.png", Box2D(0, 64, 64, 64), Box2D(21, 40, 19.5, 40));
+		inTimer->setAtlas("number.png", Box2D(0, 64, 64, 64), Box2D(21.f, 40.f, 19.5f, 40.f));
 		inTimer->setComma(Box2D(25, 40, 8, 14), Box2D(640, 64, 40, 64), Box2D(680, 64, 40, 64));
 		inTimer->setAtlasAngle(-10.f);
 		return;
@@ -246,6 +269,14 @@ void Map::ObjectCreateCheck(std::string& text, int x_index, int y_index)
 		paint->SetTexture(rm->GetTextureData((std::string)"paintTex"));
 		return;
 	}
+	if (text == "w") {
+		this->waterPos = Vec2(this->DrawSize.x * x_index - 25, this->DrawSize.y * y_index);
+	}
+}
+
+Vec2 Map::getWaterPos()
+{
+	return this->waterPos;
 }
 
 void Map::UpDate()
@@ -261,9 +292,12 @@ void Map::Render2D()
 		{
 			if (this->hitBase[y][x].Getarr() != 0)
 			{
-				Box2D draw(this->hitBase[y][x].position, this->DrawSize);
-				draw.OffsetSize();
-				this->mapimg.Draw(draw, this->chip[this->hitBase[y][x].Getarr()]);
+				if (this->hitBase[y][x].IsObjectDistanceCheck(OGge->camera->GetPos(), OGge->camera->GetSize()))
+				{
+					Box2D draw(this->hitBase[y][x].position, this->DrawSize);
+					draw.OffsetSize();
+					this->mapimg.Draw(draw, this->chip[this->hitBase[y][x].Getarr()]);
+				}
 			}
 		}
 	}
@@ -297,7 +331,7 @@ bool Map::HitCheck(GameObject &p, const int id)
 	}
 	return false;
 }
-bool Map::HitCheck(GameObject &p, const std::string name)
+bool Map::HitCheck(GameObject &p, const std::string& name)
 {
 	for (int y = 0; y < this->mapSize.y; ++y)
 	{
@@ -318,16 +352,13 @@ bool Map::HitCheck(GameObject &p, const std::string name)
 	return false;
 }
 
-Map::SP Map::Create(std::string& path, Format format, bool flag_)
+Map::SP Map::Create(const std::string& path, const Format& format)
 {
 	auto to = Map::SP(new Map());
 	if (to)
 	{
 		to->me = to;
-		if (flag_)
-		{
-			OGge->SetTaskObject(to);
-		}
+		OGge->SetTaskObject(to);
 		if (!to->LoadMap(path, format))
 		{
 			to->Kill();

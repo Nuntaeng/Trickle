@@ -13,6 +13,7 @@ Fan::~Fan() {}
 bool Fan::Initialize(Vec2 pos, float r, Dir d, /*std::shared_ptr<Switch>& swich,*/float effectdis, bool active) {
 	this->taskName = "Senpuki";			//検索時に使うための名を登録する
 	__super::Init(taskName);			//TaskObject内の処理を行う
+	SetDrawOrder(0.5f);
 
 										//アニメーションのリセットをする
 	animetion.AnimetionReset();
@@ -160,7 +161,7 @@ void Fan::Render2D() {
 	src.OffsetSize();
 	if (this->dir == Fan::Dir::LEFT)
 	{
-		int k = src.w;
+		float k = src.w;
 		src.w = src.x;
 		src.x = k;
 	}
@@ -183,7 +184,7 @@ void Fan::SendWind() {
 			{
 				if ((*id)->GetState() == Water::State::GAS)
 				{
-					(*id)->MovePos_x(this->strength);
+					(*id)->MovePos_x((float)this->strength);
 				}
 			}
 		}

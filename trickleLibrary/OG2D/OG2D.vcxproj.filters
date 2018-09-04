@@ -153,6 +153,15 @@
     <Filter Include="ソースファイル\OGSystem\System\Icon">
       <UniqueIdentifier>{b752a1f7-d8d9-467f-939c-7f74e9922062}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソースファイル\Task\Credit">
+      <UniqueIdentifier>{2b5af848-f153-4022-ab4a-1df6c4bcf3b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Task\Demo">
+      <UniqueIdentifier>{78e87df9-0c80-4b4d-a085-755a2223352c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソースファイル\Task\JecLogo">
+      <UniqueIdentifier>{780d195c-7f0b-4d1a-83a4-bd521a4efadf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Object\Object.cpp">
@@ -181,9 +190,6 @@
     </ClCompile>
     <ClCompile Include="src\OGSystem\Input\Input.cpp">
       <Filter>ソースファイル\OGSystem\System\Input</Filter>
-    </ClCompile>
-    <ClCompile Include="src\OGSystem\Font\Font.cpp">
-      <Filter>ソースファイル\OGSystem\System\Font</Filter>
     </ClCompile>
     <ClCompile Include="src\OGSystem\Window\Window.cpp">
       <Filter>ソースファイル\OGSystem\System\Window</Filter>
@@ -318,6 +324,27 @@
     <ClCompile Include="src\Task\StageInfoRes.cpp">
       <Filter>ソースファイル\Task\StageAlert</Filter>
     </ClCompile>
+    <ClCompile Include="src\Gimmick\NO_MOVE\Door.cpp">
+      <Filter>ソースファイル\GIMMCK\NO_MOVE_GIMMCK</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Task\Task_Credit.cpp">
+      <Filter>ソースファイル\Task\Credit</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UI\GoalDirectionUI.cpp">
+      <Filter>ソースファイル\Goal</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Gimmick\NO_MOVE\WeightSwitch.cpp">
+      <Filter>ソースファイル\GIMMCK\NO_MOVE_GIMMCK</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Task\Task_Demo.cpp">
+      <Filter>ソースファイル\Task\Demo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Task\JecLogo.cpp">
+      <Filter>ソースファイル\Task\JecLogo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OGSystem\Font\TextureFont.cpp">
+      <Filter>ソースファイル\OGSystem\System\Font</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Object\Object.h">
@@ -346,9 +373,6 @@
     </ClInclude>
     <ClInclude Include="src\OGSystem\Input\Input.h">
       <Filter>ソースファイル\OGSystem\System\Input</Filter>
-    </ClInclude>
-    <ClInclude Include="src\OGSystem\Font\Font.h">
-      <Filter>ソースファイル\OGSystem\System\Font</Filter>
     </ClInclude>
     <ClInclude Include="src\OGSystem\Window\Window.h">
       <Filter>ソースファイル\OGSystem\System\Window</Filter>
@@ -487,6 +511,30 @@
     </ClInclude>
     <ClInclude Include="src\Task\StageInfoRes.h">
       <Filter>ソースファイル\Task\StageAlert</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gimmick\NO_MOVE\Door.h">
+      <Filter>ソースファイル\GIMMCK\NO_MOVE_GIMMCK</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Task\Task_Credit.h">
+      <Filter>ソースファイル\Task\Credit</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UI\GoalDirectionUI.h">
+      <Filter>ソースファイル\Goal</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gimmick\NO_MOVE\WeightSwitch.h">
+      <Filter>ソースファイル\GIMMCK\NO_MOVE_GIMMCK</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Task\Task_Demo.h">
+      <Filter>ソースファイル\Task\Demo</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Task\JecLogo.h">
+      <Filter>ソースファイル\Task\JecLogo</Filter>
+    </ClInclude>
+    <ClInclude Include="src\OGSystem\Font\TextureFont.h">
+      <Filter>ソースファイル\OGSystem\System\Font</Filter>
+    </ClInclude>
+    <ClInclude Include="src\OGSystem\randmais.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

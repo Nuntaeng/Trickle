@@ -4,13 +4,21 @@
 #include "Map\Map.h"
 #include "Block\block.h"
 #include "Gimmick\NO_MOVE\Switch.h"
+#include "Gimmick\NO_MOVE\Door.h"
+#include "Gimmick/NO_MOVE/WeightSwitch.h"
 
 Player::Player()
+	:MOVE_SPEED(5.0f),
+	JUMP_POWER(-13.0f),
+	MAX_FALL(15.0f),
+	GRAVITY((9.8f/60.0f/60.0f*32.0f)*10.0f),
+	FIN_SPEED(0.5f)
 {
 	this->hold = false;
 	this->isInputAuto = false;
 	this->isInput = false;
 	this->haveAddPos = { 0,0 };
+	this->mass = 1.0f;      //仮
 }
 Player::~Player()
 {
@@ -24,7 +32,7 @@ bool Player::Initialize(Vec2& pos)
 {
 	this->taskName = "Player";
 	__super::Init(this->taskName);
-	__super::SetDrawOrder(0.4f);
+	__super::SetDrawOrder(0.45f);
 	//オブジェクトの初期化
 	this->CreateObject(Cube, pos, Vec2(64.0f, 80.f), 0.0f);
 	this->objectTag = "Player";
@@ -49,6 +57,10 @@ bool Player::Initialize(Vec2& pos)
 void Player::UpDate()
 {
 	++animation.timeCnt;
+	if (this->animation.timeCnt >= 300000)
+	{
+		this->animation.timeCnt = 0;
+	}
 	//アニメーションカウントを増やす
 	this->StateUpDate();
 	//各状態での処理と別状態への移行
@@ -64,7 +76,7 @@ void Player::UpDate()
 
 		//スイッチはすぐモーションが変わらないのでanimation中の状態を持ってくる
 		if (this->motion != Motion::Ladder && animation.animMo != Motion::Switch_M &&
-			this->motion != Motion::Lift && this->motion != Lower && this->motion != Spill) {
+			this->motion != Motion::Lift && this->motion != Lower && this->motion != Spill && this->motion != Motion::NoLower) {
 			if (this->InputLeft())
 			{
 				this->est.x = -this->MOVE_SPEED;
@@ -97,6 +109,10 @@ void Player::UpDate()
 		//ブロックを押す
 		this->motion = Motion::Block_M;
 	}
+	if (this->state == State::BUCKET)
+	{
+		this->HaveObjectPosMove();
+	}
 }
 void Player::Render2D()
 {
@@ -111,14 +127,17 @@ void Player::Render2D()
 		draw = { this->position.x - 8.f, this->position.y, this->Scale.x + 8.f, this->Scale.y };
 		draw.OffsetSize();
 	}
-
+	{
+		draw.y += 2.f;
+		draw.h += 2.f;
+	}
 	Box2D src = this->animation.returnSrc(this->motion, this->state, this->direction);
 	//モ-ションを受けsrcをreturnする
 	src.OffsetSize();
 
 	//左向きなら画像を逆にする
 	if (direction == Direction::RIGHT) {
-		int k = src.w;
+		float k = src.w;
 		src.w = src.x;
 		src.x = k;
 	}
@@ -154,6 +173,17 @@ bool Player::HeadCheck()
 		if (this->head.IsObjectDistanceCheck((*id)->position, (*id)->Scale))
 		{
 			if (this->head.CubeHit(*(*id)))
+			{
+				return true;
+			}
+		}
+	}
+	auto door = OGge->GetTasks<Door>("Door");
+	for (auto id = door->begin(); id != door->end(); ++id)
+	{
+		if (head.IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+		{
+			if (head.CubeHit(*(*id)))
 			{
 				return true;
 			}
@@ -237,7 +267,7 @@ bool Player::SolidHitCheck()
 	auto waters = OGge->GetTasks<Water>("water");
 	for (auto id = waters->begin(); id != waters->end(); ++id)
 	{
-		if ((*id)->objectTag == "SOLID")
+		if ((*id)->objectTag == "SOLID" && !(*id)->GetHold())
 		{
 			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
 			{
@@ -283,6 +313,20 @@ bool Player::FootCheck()
 			}
 		}
 	}
+
+	//テスト追加
+	auto Wswitch = OGge->GetTasks<WeightSwitch>("WeightSwitch");
+	for (auto id = Wswitch->begin(); id != Wswitch->end(); ++id)
+	{
+		if (foot.IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+		{
+			if (foot.CubeHit(*(*id)))
+			{
+				return true;
+			}
+		}
+	}
+
 	return false;
 }
 bool Player::FootMapCheck(std::string& objname_, bool flag)
@@ -347,6 +391,9 @@ void Player::MoveCheck(Vec2& est)
 	auto blocks = OGge->GetTasks<Block>("block");
 	auto waters = OGge->GetTasks<Water>("water");
 	auto block = OGge->GetTask<Block>("block");
+	auto door = OGge->GetTasks<Door>("Door");
+	//テスト追加
+	auto Wswitch = OGge->GetTasks<WeightSwitch>("WeightSwitch");
 
 	while (est.x != 0.f)
 	{
@@ -371,6 +418,30 @@ void Player::MoveCheck(Vec2& est)
 			this->position.x = preX;
 			break;
 		}
+		for (auto id = door->begin(); id != door->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.x = preX;
+					break;
+				}
+			}
+		}
+		//テスト追加
+		for (auto id = Wswitch->begin(); id != Wswitch->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.x = preX;
+					break;
+				}
+			}
+		}
+
 		for (auto id = blocks->begin(); id != blocks->end(); ++id)
 		{
 			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
@@ -432,6 +503,31 @@ void Player::MoveCheck(Vec2& est)
 			this->position.y = preY;
 			break;
 		}
+		for (auto id = door->begin(); id != door->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.y = preY;
+					break;
+				}
+			}
+		}
+		//テスト追加
+		for (auto id = Wswitch->begin(); id != Wswitch->end(); ++id)
+		{
+			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
+			{
+				if (this->CubeHit(*(*id)))
+				{
+					this->position.y = preY;
+					this->position.y += (*id)->SetSwitchUpPos();
+					break;
+				}
+			}
+		}
+
 		for (auto id = blocks->begin(); id != blocks->end(); ++id)
 		{
 			if (this->IsObjectDistanceCheck((*id)->position, (*id)->Scale))
@@ -495,7 +591,7 @@ bool Player::HaveObjectHit()
 		return false;
 	}
 	//すでに持っているならば動かない
-	if (this->hold)
+	if (this->hold || this->motion == Motion::Switch_M)
 	{
 		return false;
 	}
@@ -606,6 +702,10 @@ void Player::HaveObjectPosMove()
 				}
 			}
 			else if (this->motion == Motion::Lift) {
+				if (this->animation.animCnt == 0)
+				{
+					this->animation.animCnt = 5;
+				}
 				if (this->direction == Direction::LEFT)
 				{
 					switch (animation.animCnt / 8 % 2) {
@@ -654,7 +754,14 @@ void Player::HaveObjectPosMove()
 				}
 			}
 			else {
-				(*id)->position = { this->position.x,this->position.y - (*id)->Scale.y + 60.f };
+				if (this->direction == Direction::RIGHT)
+				{
+					(*id)->position = { this->position.x,this->position.y - (*id)->Scale.y + 60.f };
+				}
+				else
+				{
+					(*id)->position = { this->position.x - 8.f,this->position.y - (*id)->Scale.y + 60.f };
+				}
 				(*id)->angle = 0;
 			}
 		}
@@ -665,6 +772,10 @@ void Player::HaveObjectPosMove()
 		if ((*id)->GetHold())
 		{
 			if (this->motion == Motion::Lift) {
+				if (this->animation.animCnt == 0)
+				{
+					this->animation.animCnt = 5;
+				}
 				if (this->direction == Direction::LEFT)
 				{
 					switch (animation.animCnt / 8 % 2) {
@@ -713,7 +824,14 @@ void Player::HaveObjectPosMove()
 				}
 			}
 			else {
-				(*id)->position = { this->position.x,this->position.y - this->haveAddPos.y + 30.f };
+				if (this->direction == Direction::RIGHT)
+				{
+					(*id)->position = { this->position.x,this->position.y - this->haveAddPos.y + 35.f };
+				}
+				else
+				{
+					(*id)->position = { this->position.x - 8.f,this->position.y - this->haveAddPos.y + 35.f };
+				}
 			}
 		}
 	}
@@ -753,15 +871,15 @@ Vec2 Player::Animation::Move(Motion motion_)
 			player->direction = Player::Direction::LEFT;
 		}
 		player->motion = Motion::Walk;
-		if (this->animationVec.x >= 1.0f)
+		if (this->animationVec.x >= 5.0f)
 		{
-			move.x += 1.0f;
-			this->animationVec.x -= 1.0f;
+			move.x += 5.0f;
+			this->animationVec.x -= 5.0f;
 		}
-		else if (this->animationVec.x <= -1.0f)
+		else if (this->animationVec.x <= -5.0f)
 		{
-			move.x -= 1.0f;
-			this->animationVec.x += 1.0f;
+			move.x -= 5.0f;
+			this->animationVec.x += 5.0f;
 		}
 		else
 		{
@@ -784,6 +902,7 @@ Vec2 Player::Animation::Move(Motion motion_)
 		else if (this->animationVec.y >= 0.f && motion_ == Motion::Switch_M)
 		{
 			//スイッチのアニメーションを実行する
+			player->direction = Direction::RIGHT;
 			auto switchs = OGge->GetTasks<Switch>("Switch");
 			for (auto id = switchs->begin(); id != switchs->end(); ++id)
 			{
@@ -846,6 +965,7 @@ Box2D Player::Animation::returnSrc(Motion motion, State state, Direction dir)
 			src = Box2D(this->walk[this->timeCnt / 3 % 9] * this->srcX, 9 * this->srcY, this->srcX, this->srcY);
 			break;
 		case Motion::Switch_M:
+		{
 			auto switchs = OGge->GetTasks<Switch>("Switch");
 			for (auto id = switchs->begin(); id != switchs->end(); ++id) {
 				if ((*id)->hit(*player)) {
@@ -871,7 +991,8 @@ Box2D Player::Animation::returnSrc(Motion motion, State state, Direction dir)
 					}
 				}
 			}
-			break;
+		}
+		break;
 		}
 	}
 	if (state == ANIMATION)
@@ -908,7 +1029,9 @@ Box2D Player::Animation::returnSrc(Motion motion, State state, Direction dir)
 			break;
 		case Motion::Spill:
 			src = Box2D(this->spill[this->animCnt / 8 % 3] * this->srcX, 6 * this->srcY, this->srcX, this->srcY);
-
+			break;
+		case Motion::NoLower:
+			src = Box2D(2 * this->srcX, 4 * this->srcY, this->srcX, this->srcY);
 			break;
 		}
 	}
@@ -1004,7 +1127,7 @@ bool Player::TohaveObjectHit()
 				(*id)->PlCheckHit(left);
 				if (this->est.x < 0)
 				{
-					(*id)->GetMove(this->est);
+					(*id)->GetMove(this->est * 0.5f);
 					return true;
 				}
 			}
@@ -1016,7 +1139,7 @@ bool Player::TohaveObjectHit()
 				(*id)->PlCheckHit(right);
 				if (this->est.x > 0)
 				{
-					(*id)->GetMove(this->est);
+					(*id)->GetMove(this->est * 0.5f);
 					return true;
 				}
 			}
@@ -1108,11 +1231,11 @@ bool Player::ReleaseHold()
 				{
 					if (this->direction == Direction::LEFT)
 					{
-						(*id)->position.x = this->position.x - 72;
+						(*id)->position.x = this->position.x - 60;
 					}
 					else
 					{
-						(*id)->position.x = this->position.x + 72;
+						(*id)->position.x = this->position.x + 60;
 					}
 					(*id)->HoldCheck(false);
 					(*id)->ResetMove();
@@ -1124,6 +1247,11 @@ bool Player::ReleaseHold()
 			this->Scale.y -= this->haveAddPos.y;
 			this->haveAddPos = { 0,0 };
 			return true;
+		}
+		else
+		{
+			this->animation.animCnt = 0;
+			this->motion = Motion::NoLower;
 		}
 	}
 	return false;
@@ -1223,6 +1351,32 @@ bool Player::PutCheck()
 			}
 		}
 	}
+	auto doors = OGge->GetTasks<Door>("Door");
+	for (auto id = doors->begin(); id != doors->end(); ++id)
+	{
+		if (this->direction == Direction::LEFT)
+		{
+			left.CreateObject(Cube, Vec2(this->position.x - this->Scale.x, this->position.y), this->Scale, 0.0f);
+			if ((*id)->IsObjectDistanceCheck(left.position, left.Scale))
+			{
+				if ((*id)->CubeHit(left))
+				{
+					return false;
+				}
+			}
+		}
+		else
+		{
+			right.CreateObject(Cube, Vec2(this->position.x + this->Scale.x, this->position.y), this->Scale, 0.0f);
+			if ((*id)->IsObjectDistanceCheck(right.position, right.Scale))
+			{
+				if ((*id)->CubeHit(right))
+				{
+					return false;
+				}
+			}
+		}
+	}
 	return true;
 }
 void Player::SetMotion(Motion motion_)
@@ -1282,13 +1436,18 @@ void Player::StateUpDate()
 		break;
 	case State::BUCKET:
 		//バケツの値を自分に合わせる
-		this->HaveObjectPosMove();
+		//this->HaveObjectPosMove();
 		//バケツを置く動作
-		if (this->InputB2down() && this->FootCheck())
+		if (this->InputB2down() && this->FootCheck() && this->motion != Motion::NoLower)
 		{
 			if (this->PutCheck() && this->motion != Motion::Spill)
 			{
 				this->motion = Motion::Lower;
+			}
+			else
+			{
+				this->animation.animCnt = 0;
+				this->motion = Motion::NoLower;
 			}
 		}
 		break;
@@ -1395,6 +1554,12 @@ bool Player::MotionUpDate()
 			this->animation.animCnt = 0;
 		}
 		break;
+	case NoLower:
+		if (!this->MotionNoLowerUpDate())
+		{
+			return false;
+		}
+		break;
 	}
 	return true;
 }
@@ -1425,39 +1590,12 @@ bool Player::MotionNormalUpDate()
 			}
 		}
 	}
-	if (this->state != State::BUCKET) {
-		if (this->InputDown())
-		{
-			if (this->FootMapCheck((std::string)"Ladder", true) && !this->SolidFootCheck())
-			{
-				//移動が終わったら梯子モーションをするように設定
-				this->animation.animMo = Motion::Ladder;
-				//アニメーション状態に移行
-				this->state = State::ANIMATION;
-				//カウントリセット
-				this->moveCnt = 0;
-				//移動値をすべてリセット
-				this->est = { 0.f,0.f };
-				return false;
-			}
-		}
-		if (this->InputUp())
-		{
-			if (this->MapHitCheck((std::string)"Ladder") && !this->SolidHitCheck())
-			{
-				this->animation.animMo = Motion::Ladder;
-				this->state = State::ANIMATION;
-				this->moveCnt = 0;
-				this->est = { 0.f,0.f };
-				return false;
-			}
-		}
-	}
 	if (this->InputLeft() || this->InputRight() || this->AxisLX() != 0)
 	{
 		//NORMALの時、左右ボタンを押すとWALKに変わる
 		this->motion = Motion::Walk;
 	}
+	this->LadderCheck();
 	if (!this->FootCheck())
 	{
 		//地面がない場合に落下処理に移行
@@ -1496,15 +1634,6 @@ bool Player::MotionJumpUpDate()
 }
 bool Player::MotionLadderUpDate()
 {
-	if (this->InputB1down())
-	{
-		if (this->LadderJumpCheck())
-		{
-			this->motion = Motion::Jump;
-			this->animation.animCnt = 0;
-			this->moveCnt = 0;
-		}
-	}
 	if (this->InputUp())
 	{
 		++this->animation.animCnt;
@@ -1540,6 +1669,15 @@ bool Player::MotionLadderUpDate()
 		{
 			//重力処理を行わないのでここで終了
 			return false;
+		}
+	}
+	if (this->InputLeft() || this->InputRight() || this->AxisLX() > 0.8f || this->AxisLX() < -0.8f)
+	{
+		if (this->LadderJumpCheck())
+		{
+			this->motion = Fall;
+			this->animation.animCnt = 0;
+			this->moveCnt = 0;
 		}
 	}
 	return true;
@@ -1585,6 +1723,16 @@ bool Player::MotionWalkUpDate()
 	if (this->HeadSolidCheck())
 	{
 		this->state = State::BUCKET;
+	}
+	return true;
+}
+bool Player::MotionNoLowerUpDate()
+{
+	this->animation.animCnt++;
+	if (this->animation.animCnt >= 20)
+	{
+		this->motion = Motion::Normal;
+		this->animation.animCnt = 0;
 	}
 	return true;
 }
@@ -1717,4 +1865,46 @@ void Player::SetInput(bool b)
 bool Player::GetInput() const
 {
 	return this->isInput;
+}
+bool Player::LadderCheck()
+{
+	if (this->InputDown())
+	{
+		if (this->FootMapCheck((std::string)"Ladder", true) && !this->SolidFootCheck())
+		{
+			//移動が終わったら梯子モーションをするように設定
+			this->animation.animMo = Motion::Ladder;
+			//アニメーション状態に移行
+			this->state = State::ANIMATION;
+			//カウントリセット
+			this->moveCnt = 0;
+			//移動値をすべてリセット
+			this->est = { 0.f,0.f };
+			//バケツをおろす
+			if (this->hold)
+			{
+				this->ReleaseHold();
+			}
+			return false;
+		}
+	}
+	if (this->InputUp())
+	{
+		if (this->MapHitCheck((std::string)"Ladder") && !this->SolidHitCheck())
+		{
+			if (this->hold)
+			{
+				if (!this->ReleaseHold())
+				{
+					return false;
+				}
+			}
+			this->animation.animMo = Motion::Ladder;
+			this->state = State::ANIMATION;
+			this->moveCnt = 0;
+			this->est = { 0.f,0.f };
+			return true;
+		}
+	}
+	return false;
 }
